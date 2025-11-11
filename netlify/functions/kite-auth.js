@@ -5,6 +5,7 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
 
@@ -14,7 +15,6 @@ exports.handler = async (event, context) => {
 
   const API_KEY = process.env.KITE_API_KEY;
   const API_SECRET = process.env.KITE_API_SECRET;
-  const REDIRECT_URI = process.env.REDIRECT_URI;
 
   const { requestToken } = JSON.parse(event.body || '{}');
 
