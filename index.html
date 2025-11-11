@@ -947,9 +947,20 @@
         }
 
         async function fetchKiteData() {
+            if (!state.accessToken) {
+                console.log('No access token available');
+                return;
+            }
+
             try {
                 console.log('Fetching data from Kite API...');
-                const response = await fetch(`${API_BASE}/kite-data`);
+                const response = await fetch(`${API_BASE}/kite-data`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -961,11 +972,13 @@
                         updateDisplay(data);
                         updateLastUpdated();
                         state.lastSource = 'Zerodha Kite (Real-time)';
+                        console.log('✅ Data updated successfully');
                     } else {
                         console.error('Invalid data received:', data);
                     }
                 } else {
-                    console.error('API error:', response.status);
+                    const errorData = await response.json();
+                    console.error('API error:', response.status, errorData);
                 }
             } catch (error) {
                 console.error('Fetch error:', error);
