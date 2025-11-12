@@ -3,8 +3,8 @@ const fetch = require('node-fetch');
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Content-Type': 'application/json'
   };
 
@@ -13,21 +13,17 @@ exports.handler = async (event, context) => {
   }
 
   const API_KEY = process.env.KITE_API_KEY;
-  
-  // Get access token from Authorization header
-  const authHeader = event.headers.authorization || event.headers.Authorization;
-  const accessToken = authHeader ? authHeader.replace('Bearer ', '') : null;
+  const ACCESS_TOKEN = process.env.KITE_ACCESS_TOKEN;
 
-  if (!accessToken) {
+  if (!ACCESS_TOKEN) {
     return {
-      statusCode: 401,
+      statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'No access token provided' })
+      body: JSON.stringify({ error: 'Access token not configured on server' })
     };
   }
 
   try {
-    // Instrument symbols
     const instruments = [
       'NSE:NIFTY 50',
       'NSE:NIFTY BANK',
@@ -39,7 +35,7 @@ exports.handler = async (event, context) => {
     
     const response = await fetch(url, {
       headers: {
-        'Authorization': `token ${API_KEY}:${accessToken}`,
+        'Authorization': `token ${API_KEY}:${ACCESS_TOKEN}`,
         'X-Kite-Version': '3'
       }
     });
@@ -60,7 +56,7 @@ exports.handler = async (event, context) => {
         body: JSON.stringify(result)
       };
     } else {
-      throw new Error('Kite API returned error: ' + JSON.stringify(data));
+      throw new Error('Kite API error: ' + JSON.stringify(data));
     }
   } catch (error) {
     return {
@@ -88,3 +84,17 @@ function parseQuote(quote) {
     timestamp: new Date().toISOString()
   };
 }
+```
+
+---
+
+## 📂 **Your Complete Final File Structure:**
+```
+ridawn-stock-exchange/
+├── netlify/
+│   └── functions/
+│       └── kite-data.js          ← ONLY THIS
+├── index.html                     ← Main dashboard
+├── admin.html                     ← Token generator
+├── package.json
+└── netlify.toml
