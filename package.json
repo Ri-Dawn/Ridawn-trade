@@ -1,5 +1,9 @@
 {
-  "name": "ridawn-stock-exchange",
+  "name": "ridawn-trade",
   "version": "1.0.0",
-  "description": "Real-time stock market dashboard"
+  "description": "Zerodha Kite Dashboard",
+  "main": "api/kite-data.js",
+  "dependencies": {
+    "kiteconnect": "^3.3.4"
+  }
 }
