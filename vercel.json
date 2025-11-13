@@ -1,23 +1,30 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
+  "functions": {
+    "api/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/kite-data",
-      "dest": "/api/kite-data.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  }
 }
+```
+
+---
+
+## ✅ **Deploy Steps:**
+
+1. **Update these 3 files** on GitHub
+2. **Push to GitHub**
+3. Vercel will auto-deploy in 30-60 seconds
+4. **Check the logs** - you should see detailed console messages
+
+---
+
+## 🔍 **Check Vercel Environment Variables:**
+
+Go to: https://vercel.com/your-username/ridawn-trade/settings/environment-variables
+
+Make sure you have:
+```
+KITE_API_KEY = pkm8pph0jjj3h1im
+KITE_API_SECRET = 8wbrzvda9k2f1ieo0p1g4kte49temr1k
+KITE_ACCESS_TOKEN = (leave empty for now)
