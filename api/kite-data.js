@@ -1,5 +1,5 @@
 const KiteConnect = require("kiteconnect").KiteConnect;
-// Force rebuild on Nov 14
+// forcing a fresh build at 4:30 pm
 export default async function handler(req, res) {
   // 1. Handle Preflight (CORS)
   if (req.method === 'OPTIONS') {
