@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel - Token Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn/tailwindcss.com"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
     .btn { background-color: #f66d28; }
@@ -46,7 +46,7 @@
   <script>
     // --- THIS IS THE MOST IMPORTANT PART ---
     // Please edit this line and put your API Key here.
-     const ZERODHA_API_KEY = "pkm8pph0jjj3h1im";  
+    const ZERODHA_API_KEY = "pkm8pph0jjj3h1im"; 
     // --- ------------------------------- ---
 
     const status = document.getElementById('status');
@@ -86,7 +86,7 @@
     });
 
     async function exchangeToken(requestToken) {
-      try {
+      try {.
         const response = await fetch('/api/kite-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
