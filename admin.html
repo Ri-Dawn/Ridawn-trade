@@ -7,14 +7,20 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .hidden { display: none; }
+    .btn { background-color: #f66d28; }
+    .btn:hover { background-color: #e55a1d; }
   </style>
 </head>
-<body class="bg-gray-900 text-gray-200 min-h-screen flex items-center justify-center p-4">
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen">
 
-  <div class="max-w-lg w-full bg-gray-800 rounded-lg shadow-xl p-6 md:p-8">
-    <h1 class="text-3xl font-bold text-center text-blue-400 mb-4">Admin Panel</h1>
+  <div class="w-full max-w-lg p-8 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700">
+    <h1 class="text-3xl font-bold text-center mb-2">Admin Panel</h1>
     <p class="text-center text-gray-400 mb-6">Generate and manage Zerodha Kite access token</p>
+
+    <!-- Status Box -->
+    <div id="statusBox" class="mb-4 p-4 rounded-lg text-center font-medium">
+      <span id="status">Initializing...</span>
+    </div>
 
     <!-- Error Box -->
     <div id="errorBox" class="hidden bg-red-800 border border-red-600 text-red-100 px-4 py-3 rounded-lg mb-6">
@@ -22,101 +28,102 @@
       <span id="errorMessage" class="block sm:inline"></span>
     </div>
 
-    <!-- Status Box -->
-    <div class="bg-gray-700 rounded-lg p-6 mb-6">
-      <h2 class="text-lg font-semibold mb-2">Token Status</h2>
-      <div id="statusText" class="text-blue-300 text-xl font-medium">Ready to generate</div>
-    </div>
-    
-    <!-- Token Display Box -->
-    <div id="tokenDisplay" class="hidden mb-6">
-        <label for="generatedToken" class="block text-sm font-medium text-gray-400 mb-2">Your New Access Token (Valid for 1 day):</label>
-        <textarea id="generatedToken" rows="4" class="w-full p-3 bg-gray-900 text-gray-100 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
-        <button onclick="copyToken()" class="mt-2 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
-          Copy to Clipboard
-        </button>
+    <!-- Token Box -->
+    <div id="tokenSection" class="hidden mb-6">
+      <label for="tokenOutput" class="block text-sm font-medium text-gray-400 mb-2">Generated Access Token:</label>
+      <textarea id="tokenOutput" rows="5" class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" readonly></textarea>
+      <button id="copyButton" class="w-full py-3 mt-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+        Copy Token to Clipboard
+      </button>
     </div>
 
     <!-- Generate Button -->
-    <button onclick="redirectToKite()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200">
+    <button id="generateButton" class="w-full py-3 text-lg font-semibold text-white btn rounded-lg transition-colors">
       Generate New Access Token
     </button>
   </div>
 
   <script>
-    // ### IMPORTANT: FILL THIS IN ###
-    const YOUR_API_KEY = "pkm8pph0jjj3h1im"; 
-    // ################################
+    // --- THIS IS THE MOST IMPORTANT PART ---
+    // Please edit this line and put your API Key here.
+    const ZERODHA_API_KEY = "YOUR_API_KEY_GOES_HERE"; 
+    // --- ------------------------------- ---
 
-    // Get all the elements we need to interact with
+    const status = document.getElementById('status');
+    const statusBox = document.getElementById('statusBox');
     const errorBox = document.getElementById('errorBox');
     const errorMessage = document.getElementById('errorMessage');
-    const statusText = document.getElementById('statusText');
-    const tokenDisplay = document.getElementById('tokenDisplay');
-    const generatedToken = document.getElementById('generatedToken');
-    
-    // This function runs when the "Generate" button is clicked
-    function redirectToKite() {
-      if (YOUR_API_KEY === "YOUR_ZERODHA_API_KEY_HERE") {
-        alert("ERROR: You must edit admin.html and add your ZERODHA_API_KEY first.");
+    const tokenSection = document.getElementById('tokenSection');
+    const tokenOutput = document.getElementById('tokenOutput');
+    const generateButton = document.getElementById('generateButton');
+    const copyButton = document.getElementById('copyButton');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const url = new URL(window.location.href);
+      const requestToken = url.searchParams.get('request_token');
+
+      if (requestToken) {
+        // We are in "Step 2" - a token exists.
+        status.textContent = 'Request token found. Exchanging for access token...';
+        statusBox.classList.add('bg-yellow-800', 'text-yellow-100');
+        generateButton.classList.add('hidden');
+        exchangeToken(requestToken);
+      } else {
+        // We are in "Step 1" - ready to generate.
+        status.textContent = 'Ready to generate.';
+        statusBox.classList.add('bg-blue-800', 'text-blue-100');
+      }
+    });
+
+    generateButton.addEventListener('click', () => {
+      if (!ZERODHA_API_KEY || ZERODHA_API_KEY === "YOUR_API_KEY_GOES_HERE") {
+        showError("Please edit admin.html and add your ZERODHA_API_KEY first.");
         return;
       }
-      // Redirects to Zerodha login, which will then redirect back to this page
-      const redirectUrl = `https://kite.trade/connect/login?v=3&api_key=${YOUR_API_KEY}`;
-      window.location.href = redirectUrl;
-    }
+      const redirectUrl = window.location.origin + window.location.pathname;
+      const kiteLoginUrl = `https://kite.trade/connect/login?v=3&api_key=${ZERODHA_API_KEY}`;
+      window.location.href = kiteLoginUrl;
+    });
 
-    // This function copies the new token to the clipboard
-    function copyToken() {
-        generatedToken.select();
-        document.execCommand('copy');
-        alert('Token copied to clipboard!');
-    }
+    async function exchangeToken(requestToken) {
+      try {
+        const response = await fetch('/api/kite-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_token: requestToken })
+        });
+        
+        const result = await response.json();
 
-    // --- THIS IS THE MOST IMPORTANT PART ---
-    // This code runs automatically as soon as the page loads
-    (async function handleTokenRedirect() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const requestToken = urlParams.get('request_token');
-
-      // Check if a request_token is in the URL (meaning we just came back from Zerodha)
-      if (requestToken) {
-        console.log('Found request_token:', requestToken);
-        statusText.textContent = 'Request token found. Exchanging for access token...';
-
-        try {
-          // Call our Vercel function and send it the request_token in the URL
-          // This matches the "Mode A" in our api/kite-data.js file
-          const response = await fetch(`/api/kite-data?request_token=${requestToken}`, {
-            method: 'GET'
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            // Show error from our API (e.g., "Kite Error: Invalid checksum")
-            throw new Error(data.error || 'Unknown server error');
-          }
-          
-          // SUCCESS!
-          statusText.textContent = 'Access Token Generated!';
-          generatedToken.value = data.access_token;
-          tokenDisplay.classList.remove('hidden');
-          errorBox.classList.add('hidden');
-
-        } catch (err) {
-          console.error('Failed to fetch access token:', err);
-          statusText.textContent = 'Failed to generate token.';
-          errorMessage.textContent = err.message;
-          errorBox.classList.remove('hidden');
+        if (!response.ok) {
+          throw new Error(result.error || 'Unknown error');
         }
 
-        // Clean the URL so we don't try this again on a page refresh
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    })();
-  </script>
+        // SUCCESS!
+        status.textContent = 'Access Token Generated Successfully!';
+        statusBox.classList.remove('bg-yellow-800', 'text-yellow-100');
+        statusBox.classList.add('bg-green-800', 'text-green-100');
+        
+        tokenOutput.value = result.access_token;
+        tokenSection.classList.remove('hidden');
 
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    copyButton.addEventListener('click', () => {
+        tokenOutput.select();
+        document.execCommand('copy');
+        copyButton.textContent = 'Copied!';
+        setTimeout(() => { copyButton.textContent = 'Copy Token to Clipboard'; }, 2000);
+    });
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorBox.classList.remove('hidden');
+      statusBox.classList.add('hidden');
+    }
+  </script>
 </body>
 </html>
-
