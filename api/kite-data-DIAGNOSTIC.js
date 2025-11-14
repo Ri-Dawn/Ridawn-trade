@@ -1,5 +1,5 @@
 const KiteConnect = require("kiteconnect").KiteConnect;
-// --- Final cache kill with new secret 5:25 PM ---
+
 export default async function handler(req, res) {
   // 1. Handle Preflight (CORS)
   if (req.method === 'OPTIONS') {
@@ -18,16 +18,23 @@ export default async function handler(req, res) {
     console.log('=== Request Started ===');
     console.log('Mode:', request_token ? 'GENERATING TOKEN' : 'FETCHING DATA');
     
-    // Debugging check
-    if (!API_KEY || !API_SECRET) {
-        console.error('CRITICAL: ZERODHA_API_KEY or ZERODHA_API_SECRET is missing!');
-        return res.status(500).json({ error: 'Server Configuration Error: Keys are missing.' });
-    }
-
     // ------------------------------------------
     // MODE A: GENERATE NEW TOKEN (For Admin Page)
     // ------------------------------------------
     if (request_token) {
+      // --- NEW DIAGNOSTIC LOGS ---
+      // This will log the *length* of your keys as the server sees them.
+      // This proves if they are being loaded correctly from Vercel.
+      console.log(`DIAGNOSTIC - API_KEY Length: ${API_KEY ? API_KEY.length : 0}`);
+      console.log(`DIAGNOSTIC - API_SECRET Length: ${API_SECRET ? API_SECRET.length : 0}`);
+      console.log(`DIAGNOSTIC - request_token Length: ${request_token ? request_token.length : 0}`);
+      // --- END DIAGNOSTIC LOGS ---
+
+      if (!API_KEY || !API_SECRET || !request_token) {
+          console.error('DIAGNOSTIC ERROR: One or more keys are missing.');
+          return res.status(500).json({ error: 'Server Configuration Error: A key is missing.' });
+      }
+
       console.log('Starting Token Generation...');
       const kc = new KiteConnect({ api_key: API_KEY });
 
@@ -42,6 +49,7 @@ export default async function handler(req, res) {
         });
       } catch (kiteError) {
         console.error('Kite API Error (Token Gen):', kiteError.message);
+        // This is where the "Invalid 'checksum'" error is caught
         return res.status(400).json({ error: 'Kite Error: ' + kiteError.message });
       }
     }
@@ -63,7 +71,6 @@ export default async function handler(req, res) {
           access_token: ACCESS_TOKEN
       });
 
-      // Fetch real-time quotes
       const instruments = ['NSE:NIFTY 50', 'NSE:NIFTY BANK', 'NSE:NIFTY MIDCAP 50', 'BSE:SENSEX'];
       console.log('Fetching quotes for dashboard...');
       const quotes = await kc.getQuote(instruments);
