@@ -56,6 +56,7 @@ module.exports = async (req, res) => {
   const ACCESS_TOKEN = process.env.ZERODHA_ACCESS_TOKEN;
 
   const requestToken = req.query.request_token;
+  const isTicker = req.query.ticker === 'true';
 
   if (requestToken) {
     if (!API_KEY || !API_SECRET) {
