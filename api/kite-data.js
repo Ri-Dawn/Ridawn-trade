@@ -36,7 +36,7 @@ const INDEX_CONSTITUENTS = {
     'BSE:RELIANCE', 'BSE:TCS', 'BSE:HDFCBANK', 'BSE:INFY', 'BSE:ICICIBANK',
     'BSE:HINDUNILVR', 'BSE:ITC', 'BSE:SBIN', 'BSE:BHARTIARTL', 'BSE:KOTAKBANK',
     'BSE:LT', 'BSE:AXISBANK', 'BSE:ASIANPAINT', 'BSE:MARUTI', 'BSE:BAJFINANCE',
-    'BSE:HCLTECH', 'BSE:WIPRO', 'NSE:ULTRACEMCO', 'BSE:TITAN', 'BSE:SUNPHARMA',
+    'BSE:HCLTECH', 'BSE:WIPRO', 'BSE:ULTRACEMCO', 'BSE:TITAN', 'BSE:SUNPHARMA',
     'BSE:NESTLEIND', 'BSE:ONGC', 'BSE:NTPC', 'BSE:POWERGRID', 'BSE:M&M',
     'BSE:TECHM', 'BSE:TATAMOTORS', 'BSE:BAJAJFINSV', 'BSE:INDUSINDBK', 'BSE:TATASTEEL'
   ]
@@ -54,6 +54,15 @@ module.exports = async (req, res) => {
   const API_KEY = process.env.ZERODHA_API_KEY;
   const API_SECRET = process.env.ZERODHA_API_SECRET;
   const ACCESS_TOKEN = process.env.ZERODHA_ACCESS_TOKEN;
+
+  // Debug: Log environment variables (masked)
+  console.log('Environment check:', {
+    hasApiKey: !!API_KEY,
+    hasApiSecret: !!API_SECRET,
+    hasAccessToken: !!ACCESS_TOKEN,
+    apiKeyLength: API_KEY?.length,
+    accessTokenLength: ACCESS_TOKEN?.length
+  });
 
   const requestToken = req.query.request_token;
   const isTicker = req.query.ticker === 'true';
@@ -128,7 +137,7 @@ module.exports = async (req, res) => {
   // Handle ticker data request
   if (isTicker) {
     if (!ACCESS_TOKEN || !API_KEY) {
-      return res.status(500).json({ error: 'Access token not configured' });
+      return res.status(500).json({ error: 'Access token not configured. Check Vercel environment variables.' });
     }
 
     try {
@@ -160,12 +169,15 @@ module.exports = async (req, res) => {
         }
       };
 
+      console.log('Ticker API Request:', options.path);
+
       return new Promise((resolve) => {
         const request = https.request(options, (response) => {
           let data = '';
           response.on('data', (chunk) => { data += chunk; });
           response.on('end', () => {
             try {
+              console.log('Ticker API Status:', response.statusCode);
               const jsonData = JSON.parse(data);
               
               if (jsonData.status === 'success') {
@@ -175,7 +187,7 @@ module.exports = async (req, res) => {
                   const quote = jsonData.data[instrument];
                   if (quote) {
                     const lastPrice = quote.last_price;
-                    const prevClose = quote.ohlc.close;
+                    const prevClose = quote.ohlc?.close || quote.last_price;
                     result[instrument] = {
                       value: lastPrice,
                       change: lastPrice - prevClose,
@@ -186,10 +198,12 @@ module.exports = async (req, res) => {
 
                 res.status(200).json(result);
               } else {
-                res.status(400).json({ error: jsonData.message || 'API error' });
+                console.error('Ticker API error:', jsonData);
+                res.status(400).json({ error: jsonData.message || jsonData.error_type || 'Ticker API error' });
               }
               resolve();
             } catch (err) {
+              console.error('Ticker parse error:', err);
               res.status(500).json({ error: 'Failed to parse response: ' + err.message });
               resolve();
             }
@@ -197,6 +211,7 @@ module.exports = async (req, res) => {
         });
         
         request.on('error', (error) => {
+          console.error('Ticker request error:', error);
           res.status(500).json({ error: error.message });
           resolve();
         });
@@ -211,7 +226,7 @@ module.exports = async (req, res) => {
 
   if (indexParam && INDEX_CONSTITUENTS[indexParam]) {
     if (!ACCESS_TOKEN || !API_KEY) {
-      return res.status(500).json({ error: 'Access token not configured. Please set ZERODHA_ACCESS_TOKEN in environment variables.' });
+      return res.status(500).json({ error: 'Access token not configured. Check ZERODHA_ACCESS_TOKEN in Vercel.' });
     }
 
     try {
@@ -229,21 +244,27 @@ module.exports = async (req, res) => {
         }
       };
 
+      console.log('Stocks API Request for:', indexParam, '- Stocks count:', stocks.length);
+
       return new Promise((resolve) => {
         const request = https.request(options, (response) => {
           let data = '';
           response.on('data', (chunk) => { data += chunk; });
           response.on('end', () => {
             try {
+              console.log('Stocks API Status:', response.statusCode);
               const jsonData = JSON.parse(data);
               
               if (jsonData.status === 'success') {
                 const result = stocks.map(symbol => {
                   const quote = jsonData.data[symbol];
-                  if (!quote) return null;
+                  if (!quote) {
+                    console.log('Missing quote for:', symbol);
+                    return null;
+                  }
                   
                   const lastPrice = quote.last_price;
-                  const prevClose = quote.ohlc.close;
+                  const prevClose = quote.ohlc?.close || quote.last_price;
                   
                   return {
                     symbol: symbol,
@@ -251,19 +272,22 @@ module.exports = async (req, res) => {
                     price: lastPrice,
                     change: lastPrice - prevClose,
                     percentChange: ((lastPrice - prevClose) / prevClose) * 100,
-                    open: quote.ohlc.open,
-                    high: quote.ohlc.high,
-                    low: quote.ohlc.low,
+                    open: quote.ohlc?.open || lastPrice,
+                    high: quote.ohlc?.high || lastPrice,
+                    low: quote.ohlc?.low || lastPrice,
                     volume: quote.volume || 0
                   };
                 }).filter(s => s !== null);
 
+                console.log('Stocks returned:', result.length);
                 res.status(200).json({ stocks: result });
               } else {
-                res.status(400).json({ error: jsonData.message || 'API error' });
+                console.error('Stocks API error:', jsonData);
+                res.status(400).json({ error: jsonData.message || jsonData.error_type || 'Stocks API error' });
               }
               resolve();
             } catch (err) {
+              console.error('Stocks parse error:', err);
               res.status(500).json({ error: 'Failed to parse response: ' + err.message });
               resolve();
             }
@@ -271,6 +295,7 @@ module.exports = async (req, res) => {
         });
         
         request.on('error', (error) => {
+          console.error('Stocks request error:', error);
           res.status(500).json({ error: error.message });
           resolve();
         });
@@ -285,7 +310,11 @@ module.exports = async (req, res) => {
 
   if (!ACCESS_TOKEN || !API_KEY) {
     return res.status(500).json({ 
-      error: 'Access token not configured. Please set ZERODHA_API_KEY and ZERODHA_ACCESS_TOKEN in Vercel environment variables.' 
+      error: 'Access token not configured. Please set ZERODHA_API_KEY and ZERODHA_ACCESS_TOKEN in Vercel environment variables.',
+      details: {
+        hasApiKey: !!API_KEY,
+        hasAccessToken: !!ACCESS_TOKEN
+      }
     });
   }
 
@@ -310,26 +339,29 @@ module.exports = async (req, res) => {
       }
     };
 
+    console.log('Main API Request path:', options.path);
+
     return new Promise((resolve) => {
       const request = https.request(options, (response) => {
         let data = '';
         response.on('data', (chunk) => { data += chunk; });
         response.on('end', () => {
           try {
+            console.log('Main API Status:', response.statusCode);
             const jsonData = JSON.parse(data);
             
             if (jsonData.status === 'success') {
               const parseQuote = (quote) => {
                 if (!quote) return null;
                 const lastPrice = quote.last_price;
-                const prevClose = quote.ohlc.close;
+                const prevClose = quote.ohlc?.close || quote.last_price;
                 return {
                   value: lastPrice,
                   change: lastPrice - prevClose,
                   percentChange: ((lastPrice - prevClose) / prevClose) * 100,
-                  open: quote.ohlc.open,
-                  high: quote.ohlc.high,
-                  low: quote.ohlc.low,
+                  open: quote.ohlc?.open || lastPrice,
+                  high: quote.ohlc?.high || lastPrice,
+                  low: quote.ohlc?.low || lastPrice,
                   prevClose: prevClose,
                   timestamp: new Date().toISOString()
                 };
@@ -342,12 +374,18 @@ module.exports = async (req, res) => {
                 sensex: parseQuote(jsonData.data['BSE:SENSEX'])
               };
 
+              console.log('Success! Returning data for all indices');
               res.status(200).json(result);
             } else {
-              res.status(400).json({ error: jsonData.message || 'API error' });
+              console.error('Main API error:', jsonData);
+              res.status(400).json({ 
+                error: jsonData.message || jsonData.error_type || 'API error',
+                details: jsonData
+              });
             }
             resolve();
           } catch (err) {
+            console.error('Main parse error:', err);
             res.status(500).json({ error: 'Failed to parse response: ' + err.message });
             resolve();
           }
@@ -355,6 +393,7 @@ module.exports = async (req, res) => {
       });
       
       request.on('error', (error) => {
+        console.error('Main request error:', error);
         res.status(500).json({ error: error.message });
         resolve();
       });
@@ -363,6 +402,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Main catch error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
