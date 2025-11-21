@@ -13,7 +13,7 @@ const INDEX_CONSTITUENTS = {
     'NSE:TATASTEEL', 'NSE:HINDALCO', 'NSE:INDUSINDBK', 'NSE:CIPLA', 'NSE:DIVISLAB',
     'NSE:DRREDDY', 'NSE:EICHERMOT', 'NSE:GRASIM', 'NSE:HEROMOTOCO', 'NSE:JSWSTEEL',
     'NSE:APOLLOHOSP', 'NSE:BRITANNIA', 'NSE:SBILIFE', 'NSE:HDFCLIFE', 'NSE:BAJAJ-AUTO',
-    'NSE:TATACONSUM', 'NSE:ADANIENT', 'NSE:BPCL', 'NSE:UPL', 'NSE:SHRIRAMFIN'
+    'NSE:TATACONSUM', 'NSE:ADANIENT', 'NSE:BPCL', 'NSE:UPL', 'NSE:LTIM'
   ],
   banknifty: [
     'NSE:HDFCBANK', 'NSE:ICICIBANK', 'NSE:SBIN', 'NSE:KOTAKBANK', 'NSE:AXISBANK',
@@ -51,9 +51,9 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const API_KEY = process.env.ZERODHA_API_KEY;
-  const API_SECRET = process.env.ZERODHA_API_SECRET;
-  const ACCESS_TOKEN = process.env.ZERODHA_ACCESS_TOKEN;
+  const API_KEY = process.env.ZERODHA_API_KEY?.trim();
+  const API_SECRET = process.env.ZERODHA_API_SECRET?.trim();
+  const ACCESS_TOKEN = process.env.ZERODHA_ACCESS_TOKEN?.trim();
 
   // Debug: Log environment variables (masked)
   console.log('Environment check:', {
@@ -61,7 +61,9 @@ module.exports = async (req, res) => {
     hasApiSecret: !!API_SECRET,
     hasAccessToken: !!ACCESS_TOKEN,
     apiKeyLength: API_KEY?.length,
-    accessTokenLength: ACCESS_TOKEN?.length
+    accessTokenLength: ACCESS_TOKEN?.length,
+    apiKeyPreview: API_KEY?.substring(0, 4) + '...',
+    accessTokenPreview: ACCESS_TOKEN?.substring(0, 4) + '...'
   });
 
   const requestToken = req.query.request_token;
